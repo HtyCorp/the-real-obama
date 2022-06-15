@@ -39,23 +39,29 @@ public class InteractionHandler implements SlashCommandCreateListener {
     }
 
     private void handleObamaSayCommand(SlashCommandInteraction command, String script) {
-        command.createImmediateResponder()
-                .append("DEBUG: Parsed script as: ")
-                .append(tokenizeScript(script))
-                .respond()
-                .join();
+        var maybeUserVoiceChannel = command.getUser().getConnectedVoiceChannels().stream().findAny();
+        if (maybeUserVoiceChannel.isEmpty()) {
+            respondImmediately(command, "Obama can't speak unless you're in a voice channel");
+        }
+
+        // TODO
+        var transcriptWords = tokenizeScript(script);
     }
 
     private void handleUnknownCommand(SlashCommandInteraction command) {
-        command.createImmediateResponder()
-                .append("Sorry, I'm not programmed to understand that command.")
-                .respond()
-                .join();
+        respondImmediately(command, "Sorry, I'm not programmed to understand that command.");
     }
 
     private List<String> tokenizeScript(String script) {
         return Arrays.stream(script.split("[^A-Za-z\\d]+"))
                 .filter(not(String::isBlank))
                 .collect(Collectors.toList());
+    }
+
+    private void respondImmediately(SlashCommandInteraction command, String response) {
+        command.createImmediateResponder()
+                .append(response)
+                .respond()
+                .join();
     }
 }
