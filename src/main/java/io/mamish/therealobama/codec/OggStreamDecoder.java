@@ -1,10 +1,10 @@
-package io.mamish.therealobama.ogg;
+package io.mamish.therealobama.codec;
+
+import io.mamish.therealobama.audio.OpusFrame;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Queue;
 
 import static java.lang.Byte.toUnsignedInt;
@@ -16,7 +16,7 @@ public class OggStreamDecoder {
     // OGG for Opus: https://datatracker.ietf.org/doc/html/rfc7845
     // Opus: https://datatracker.ietf.org/doc/html/rfc6716
 
-    private static final int PAGE_HEADER_AS_LE_INT = 'O' | ('g' << 1) | ('g' << 2) | ('S' << 3);
+    private static final int PAGE_HEADER_AS_LE_INT = 'O' | ('g' << 8) | ('g' << 16) | ('S' << 24);
     private static final byte OGG_PROTOCOL_VERSION = 0;
 
     private static final byte HEADER_FLAG_CONTINUATION = 1;
@@ -26,13 +26,13 @@ public class OggStreamDecoder {
     private static final int PACKET_BUFFER_CAPACITY = 65536; // This is a bit bigger than even the silly max case noted in RFC7845 (~61k)
     private static final int MAX_SEGMENT_SIZE = 255;
 
-    private final Queue<byte[]> allPackets = new ArrayDeque<>();
+    private final Queue<OpusFrame> allPackets = new ArrayDeque<>();
 
     public OggStreamDecoder(ByteBuffer streamData) {
         readAllPackets(streamData);
     }
 
-    public Queue<byte[]> getAllPackets() {
+    public Queue<OpusFrame> getAllPackets() {
         return allPackets;
     }
 
@@ -93,7 +93,7 @@ public class OggStreamDecoder {
                     currentPacketBuffer.flip();
                     byte[] fullPacketData = new byte[currentPacketBuffer.limit()];
                     currentPacketBuffer.get(fullPacketData);
-                    allPackets.add(fullPacketData);
+                    allPackets.add(new OpusFrame(fullPacketData));
                     currentPacketBuffer.clear();
                 }
             }

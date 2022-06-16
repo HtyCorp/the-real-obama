@@ -1,4 +1,4 @@
-package io.mamish.therealobama.ogg;
+package io.mamish.therealobama.codec;
 
 public class OpusDecodeException extends RuntimeException {
 
