@@ -5,6 +5,8 @@ import io.mamish.therealobama.audio.OpusFrame;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Queue;
 
 import static java.lang.Byte.toUnsignedInt;
@@ -26,13 +28,13 @@ public class OggStreamDecoder {
     private static final int PACKET_BUFFER_CAPACITY = 65536; // This is a bit bigger than even the silly max case noted in RFC7845 (~61k)
     private static final int MAX_SEGMENT_SIZE = 255;
 
-    private final Queue<OpusFrame> allPackets = new ArrayDeque<>();
+    private final List<OpusFrame> allPackets = new ArrayList<>();
 
     public OggStreamDecoder(ByteBuffer streamData) {
         readAllPackets(streamData);
     }
 
-    public Queue<OpusFrame> getAllPackets() {
+    public List<OpusFrame> getAllPackets() {
         return allPackets;
     }
 

@@ -5,7 +5,7 @@ import io.mamish.therealobama.audio.OpusFrame;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.Arrays;
-import java.util.Queue;
+import java.util.List;
 
 import static java.lang.Byte.toUnsignedInt;
 
@@ -20,18 +20,19 @@ public class OpusStreamDecoder {
     private static final int SAMPLE_RATE_48KHZ = 48000;
     private static final int CHANNEL_MAPPING_FAMILY_MONO_STEREO = 0;
 
-    private final Queue<OpusFrame> packetQueue;
+    private final List<OpusFrame> opusAudioFrames;
 
     public OpusStreamDecoder(ByteBuffer streamData) {
         OggStreamDecoder oggDecoder = new OggStreamDecoder(streamData);
-        this.packetQueue = oggDecoder.getAllPackets();
-        byte[] idPacket = packetQueue.remove().getData();
-        validateIdPacket(idPacket);
-        packetQueue.remove(); // Metadata packet, unused
+        List<OpusFrame> allPackets = oggDecoder.getAllPackets();
+        byte[] idPacketData = allPackets.get(0).getData();
+        validateIdPacket(idPacketData);
+        // TODO: Maybe we want to use the comment/metadata header to validate clip title or something? Skip it totally for now
+        this.opusAudioFrames = allPackets.subList(2, allPackets.size());
     }
 
-    public OpusFrame getNextPacket() {
-        return packetQueue.poll();
+    public List<OpusFrame> getAudioFrames() {
+        return opusAudioFrames;
     }
 
     private void validateIdPacket(byte[] idPacketData) {

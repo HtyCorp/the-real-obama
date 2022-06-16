@@ -5,17 +5,20 @@ import org.javacord.api.audio.AudioSource;
 import org.javacord.api.audio.AudioSourceBase;
 
 import java.util.Objects;
+import java.util.concurrent.CompletableFuture;
 
 public class SentenceAudioSource extends AudioSourceBase {
 
     private final Sentence sentence;
+    private final CompletableFuture<Void> onLastFrameFuture;
 
     private Word currentWord;
     private OpusFrame nextFrame;
 
-    public SentenceAudioSource(DiscordApi api, Sentence sentence) {
+    public SentenceAudioSource(DiscordApi api, Sentence sentence, CompletableFuture<Void> onLastFrameFuture) {
         super(api);
         this.sentence = sentence;
+        this.onLastFrameFuture = onLastFrameFuture;
         currentWord = Objects.requireNonNull(sentence.getWords().poll(), "Provided sentence has no words");
         advance();
     }
@@ -34,6 +37,9 @@ public class SentenceAudioSource extends AudioSourceBase {
     public byte[] getNextFrame() {
         byte[] frameData = Objects.requireNonNull(nextFrame, "Cannot get next frame when at end of stream").getData();
         advance();
+        if (!hasNextFrame() && !onLastFrameFuture.isDone()) {
+            onLastFrameFuture.complete(null);
+        }
         return frameData;
     }
 
