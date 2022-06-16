@@ -7,7 +7,7 @@ import org.javacord.api.audio.AudioConnection;
 import org.javacord.api.audio.AudioSource;
 import org.javacord.api.entity.channel.ServerVoiceChannel;
 import org.javacord.api.interaction.SlashCommandInteraction;
-import org.javacord.api.interaction.callback.InteractionOriginalResponseUpdater;
+import software.amazon.awssdk.utils.Either;
 
 import java.util.LinkedList;
 import java.util.List;
@@ -24,8 +24,6 @@ public class SpeakWorkflowInstance implements Runnable {
     private final List<String> transcriptWords;
     private final WordLoader wordLoader;
 
-    private InteractionOriginalResponseUpdater responseUpdater;
-
     public SpeakWorkflowInstance(SlashCommandInteraction interaction, InteractionMessageUpdater messageUpdater, ServerVoiceChannel voiceChannel,
                                  List<String> transcriptWords, WordLoader wordLoader) {
         this.interaction = interaction;
@@ -39,6 +37,11 @@ public class SpeakWorkflowInstance implements Runnable {
     public void run() {
         messageUpdater.set("Obama is preparing his speech...");
         Sentence sentence = loadSentence();
+        if (sentence == null) {
+            return;
+        }
+
+        // TODO: Queue mechanism (either a lock or an independent per-channel voice session object) in case multiple sentences get queued up
 
         messageUpdater.set("Obama will be giving his speech shortly...");
         AudioConnection voiceAudioConnection = joinVoiceChannel();
@@ -51,10 +54,25 @@ public class SpeakWorkflowInstance implements Runnable {
     }
 
     private Sentence loadSentence() {
-        Queue<Word> words = transcriptWords.parallelStream()
+        List<Either<String,Word>> maybeWords = transcriptWords.parallelStream()
                 .map(wordLoader::loadWord)
-                .collect(Collectors.toCollection(LinkedList::new));
-        return new Sentence(words);
+                .collect(Collectors.toList());
+
+        List<String> unknownWords = maybeWords.stream()
+                .flatMap(e -> e.left().stream())
+                .collect(Collectors.toList());
+
+        if (unknownWords.isEmpty()) {
+            // All words are known
+            Queue<Word> wordQueue = maybeWords.stream()
+                    .map(e -> e.right().get())
+                    .collect(Collectors.toCollection(LinkedList::new));
+            return new Sentence(wordQueue);
+        } else {
+            // Some words were unrecognised so we proceed with speech
+            messageUpdater.append("The following words are unknown and can't be used: " + String.join(", ", unknownWords));
+            return null;
+        }
     }
 
     private AudioConnection joinVoiceChannel() {

@@ -1,19 +1,23 @@
 package io.mamish.therealobama;
 
+import io.mamish.therealobama.audio.OpusFrame;
 import io.mamish.therealobama.audio.Word;
 import io.mamish.therealobama.codec.OpusStreamDecoder;
+import software.amazon.awssdk.utils.Either;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.LinkedList;
+import java.util.Queue;
 
 public class WordLoader {
 
     private static final String TEST_WORD = "speakownself";
 
-    public Word loadWord(String wordText) {
+    public Either<String,Word> loadWord(String wordText) {
         if (!wordText.equals(TEST_WORD)) {
-            throw new IllegalArgumentException("Only supports test audio word");
+            // Only supports test audio word for now
+            return Either.left(wordText);
         }
 
         byte[] opusFileRaw;
@@ -24,7 +28,9 @@ public class WordLoader {
         }
 
         OpusStreamDecoder opusStreamDecoder = new OpusStreamDecoder(ByteBuffer.wrap(opusFileRaw));
-        return new Word(new LinkedList<>(opusStreamDecoder.getAudioFrames()));
+
+        Queue<OpusFrame> audioFrameQueue = new LinkedList<>(opusStreamDecoder.getAudioFrames());
+        return Either.right(new Word(audioFrameQueue));
     }
 
 }
