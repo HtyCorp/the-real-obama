@@ -17,10 +17,18 @@ public class InteractionMessageUpdater {
         this.interaction = interaction;
     }
 
-    public void println(String message) {
-        messageLines.add(message);
-        String newMessageContent = String.join("\n", messageLines);
+    public void set(String message) {
+        messageLines.clear();
+        append(message);
+    }
 
+    public void append(String message) {
+        messageLines.add(message);
+        updateInteraction();
+    }
+
+    private void updateInteraction() {
+        String newMessageContent = String.join("\n", messageLines);
         if (interactionUpdater == null) {
             interactionUpdater = interaction.createImmediateResponder()
                     .setContent(newMessageContent)

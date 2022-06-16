@@ -18,8 +18,6 @@ import java.util.stream.Collectors;
 
 public class SpeakWorkflowInstance implements Runnable {
 
-    private static final long POST_JOIN_PAUSE_MILLIS = 1000;
-
     private final SlashCommandInteraction interaction;
     private final InteractionMessageUpdater messageUpdater;
     private final ServerVoiceChannel voiceChannel;
@@ -39,26 +37,17 @@ public class SpeakWorkflowInstance implements Runnable {
 
     @Override
     public void run() {
-        messageUpdater.println("Obama is preparing his speech...");
+        messageUpdater.set("Obama is preparing his speech...");
         Sentence sentence = loadSentence();
 
-        messageUpdater.println("Obama will be giving his speech shortly...");
+        messageUpdater.set("Obama will be giving his speech shortly...");
         AudioConnection voiceAudioConnection = joinVoiceChannel();
-        sleepMillis(POST_JOIN_PAUSE_MILLIS);
 
-        messageUpdater.println("Obama is giving his speech...");
+        messageUpdater.set("Obama is giving his speech...");
         completeSpeech(sentence, voiceAudioConnection);
 
-        messageUpdater.println("Obama has spoken");
+        messageUpdater.set("Obama has spoken");
         leaveVoice(voiceAudioConnection);
-    }
-
-    private void sleepMillis(long millis) {
-        try {
-            Thread.sleep(millis);
-        } catch (InterruptedException e) {
-            throw new RuntimeException("Thread unexpectedly interrupted");
-        }
     }
 
     private Sentence loadSentence() {

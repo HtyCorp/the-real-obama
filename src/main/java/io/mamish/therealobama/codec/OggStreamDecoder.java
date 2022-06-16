@@ -64,8 +64,9 @@ public class OggStreamDecoder {
                 throw new OggDecodeException(String.format("Continuation mismatch: expecting=%b, actual=%b",
                         isExpectingContinuation, headerType.isContinuation));
             }
-            if (isFirstPage && !headerType.isBeginningOfStream) {
-                throw new OggDecodeException("First packet in stream is missing BOS flag");
+            if (isFirstPage != headerType.isBeginningOfStream) {
+                throw new OggDecodeException(String.format("Stream begin flag mismatch: expecting=%b, actual=%b",
+                        isFirstPage, headerType.isBeginningOfStream));
             }
 
             sourceData.getLong(); // Granule position, unused

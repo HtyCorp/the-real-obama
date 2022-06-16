@@ -47,14 +47,14 @@ public class InteractionHandler implements SlashCommandCreateListener {
         InteractionMessageUpdater messageUpdater = new InteractionMessageUpdater(command);
         var maybeUserVoiceChannel = command.getUser().getConnectedVoiceChannels().stream().findAny();
         if (maybeUserVoiceChannel.isEmpty()) {
-            messageUpdater.println("Obama can't speak unless you're in a voice channel");
+            messageUpdater.set("Obama can't speak unless you're in a voice channel");
             return;
         }
 
         var transcriptWords = tokenizeScript(script);
 
         if (transcriptWords.isEmpty()) {
-            messageUpdater.println("Obama can't work with an empty script");
+            messageUpdater.set("Obama can't work with an empty script");
             return;
         }
 
@@ -64,17 +64,17 @@ public class InteractionHandler implements SlashCommandCreateListener {
             try {
                 workflowFuture.get(COMMAND_TIMEOUT_SECONDS, TimeUnit.SECONDS);
             } catch (InterruptedException e) {
-                messageUpdater.println("Obama was unexpectedly interrupted");
+                messageUpdater.append("Obama was unexpectedly interrupted");
             } catch (ExecutionException e) {
-                messageUpdater.println("Obama ran into a problem, apparently '" + e.getCause().getMessage() + "'");
+                messageUpdater.append("Obama ran into a problem, apparently '" + e.getCause().getMessage() + "'");
             } catch (TimeoutException e) {
-                messageUpdater.println("Obama has run out of time to give his speech");
+                messageUpdater.append("Obama has run out of time to give his speech");
             }
         });
     }
 
     private void handleUnknownCommand(SlashCommandInteraction command) {
-        new InteractionMessageUpdater(command).println("This isn't supposed to happen - I don't recognise that command");
+        new InteractionMessageUpdater(command).append("This isn't supposed to happen - I don't recognise that command");
     }
 
     private List<String> tokenizeScript(String script) {

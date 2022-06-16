@@ -27,7 +27,7 @@ public class OpusStreamDecoder {
         List<OpusFrame> allPackets = oggDecoder.getAllPackets();
         byte[] idPacketData = allPackets.get(0).getData();
         validateIdPacket(idPacketData);
-        // TODO: Maybe we want to use the comment/metadata header to validate clip title or something? Skip it totally for now
+        // TODO: Maybe we want to use the comment/metadata header (index 1) to validate clip title or something? Skip it totally for now
         this.opusAudioFrames = allPackets.subList(2, allPackets.size());
     }
 
