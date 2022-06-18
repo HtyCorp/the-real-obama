@@ -2,6 +2,7 @@ package io.mamish.therealobama.dao;
 
 import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbBean;
 import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbPartitionKey;
+import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbSortKey;
 
 // TODO: This should use the DDB enhanced client immutable pattern
 
@@ -33,7 +34,7 @@ public class WordMetadataItem {
         this.word = word;
     }
 
-    @DynamoDbPartitionKey
+    @DynamoDbSortKey
     public String getVariant() {
         return variant;
     }
@@ -58,18 +59,20 @@ public class WordMetadataItem {
         this.bookLocation = bookLocation;
     }
 
+    @DynamoDbBean
     public static class BookLocation {
+
         private String book;
-        private String chapterIndex;
-        private String bookStartMs;
-        private String chapterStartMs;
-        private String lengthMs;
+        private int chapterIndex;
+        private long bookStartMs;
+        private long chapterStartMs;
+        private long lengthMs;
 
         public BookLocation() {
             // Default constructor for reflection
         }
 
-        public BookLocation(String book, String chapterIndex, String bookStartMs, String chapterStartMs, String lengthMs) {
+        public BookLocation(String book, int chapterIndex, long bookStartMs, long chapterStartMs, long lengthMs) {
             this.book = book;
             this.chapterIndex = chapterIndex;
             this.bookStartMs = bookStartMs;
@@ -85,37 +88,36 @@ public class WordMetadataItem {
             this.book = book;
         }
 
-        public String getChapterIndex() {
+        public int getChapterIndex() {
             return chapterIndex;
         }
 
-        public void setChapterIndex(String chapterIndex) {
+        public void setChapterIndex(int chapterIndex) {
             this.chapterIndex = chapterIndex;
         }
 
-        public String getBookStartMs() {
+        public long getBookStartMs() {
             return bookStartMs;
         }
 
-        public void setBookStartMs(String bookStartMs) {
+        public void setBookStartMs(long bookStartMs) {
             this.bookStartMs = bookStartMs;
         }
 
-        public String getChapterStartMs() {
+        public long getChapterStartMs() {
             return chapterStartMs;
         }
 
-        public void setChapterStartMs(String chapterStartMs) {
+        public void setChapterStartMs(long chapterStartMs) {
             this.chapterStartMs = chapterStartMs;
         }
 
-        public String getLengthMs() {
+        public long getLengthMs() {
             return lengthMs;
         }
 
-        public void setLengthMs(String lengthMs) {
+        public void setLengthMs(long lengthMs) {
             this.lengthMs = lengthMs;
         }
     }
-
 }

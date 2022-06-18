@@ -1,10 +1,10 @@
-package io.mamish.therealobama.dao;
+package io.mamish.therealobama.batch;
 
 import com.google.gson.annotations.SerializedName;
 
 import java.util.List;
 
-public class TranscribeResultsJson {
+public class TranscriptionOutput {
 
     private List<Transcript> transcripts;
     private List<Item> items;
@@ -31,7 +31,7 @@ public class TranscribeResultsJson {
         private String startTimeSeconds;
         @SerializedName("end_time")
         private String endTimeSeconds;
-        private String alternatives;
+        private List<Alternative> alternatives;
         private String type;
 
         public String getStartTimeSeconds() {
@@ -42,7 +42,7 @@ public class TranscribeResultsJson {
             return endTimeSeconds;
         }
 
-        public String getAlternatives() {
+        public List<Alternative> getAlternatives() {
             return alternatives;
         }
 
@@ -52,6 +52,20 @@ public class TranscribeResultsJson {
 
         public boolean isPronunciationType() {
             return type.equals("pronunciation");
+        }
+
+        public static class Alternative {
+
+            private String content;
+            private String confidence;
+
+            public String getContent() {
+                return content;
+            }
+
+            public String getConfidence() {
+                return confidence;
+            }
         }
     }
 }
