@@ -3,31 +3,35 @@ package io.mamish.therealobama;
 import io.mamish.therealobama.audio.OpusFrame;
 import io.mamish.therealobama.audio.Word;
 import io.mamish.therealobama.codec.OpusStreamDecoder;
+import io.mamish.therealobama.dao.WordAudioDao;
+import io.mamish.therealobama.dao.WordMetadataDao;
+import io.mamish.therealobama.dao.WordMetadataItem;
 import software.amazon.awssdk.utils.Either;
 
-import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.Queue;
+import java.util.concurrent.ThreadLocalRandom;
 
 public class WordLoader {
 
-    private static final String TEST_WORD = "speakownself";
+    private final WordMetadataDao wordMetadataDao = new WordMetadataDao();
+    private final WordAudioDao wordAudioDao = new WordAudioDao();
 
     public Either<String,Word> loadWord(String wordText) {
-        if (!wordText.equals(TEST_WORD)) {
-            // Only supports test audio word for now
+
+        List<WordMetadataItem> wordVariants = wordMetadataDao.queryWordMetadata(wordText);
+
+        if (wordVariants.isEmpty()) {
             return Either.left(wordText);
         }
 
-        byte[] opusFileRaw;
-        try (var testFile = Main.class.getClassLoader().getResourceAsStream("testaudio/speakforyourownself.opus")) {
-            opusFileRaw = testFile.readAllBytes();
-        } catch (IOException e) {
-            throw new RuntimeException("Test audio file load error", e);
-        }
+        var randomWordVariant = wordVariants.get(ThreadLocalRandom.current().nextInt(wordVariants.size()));
 
-        OpusStreamDecoder opusStreamDecoder = new OpusStreamDecoder(ByteBuffer.wrap(opusFileRaw));
+        ByteBuffer wordVariantAudioFileData = wordAudioDao.getAudioWordFile(randomWordVariant.getAudioFileS3Key());
+
+        OpusStreamDecoder opusStreamDecoder = new OpusStreamDecoder(wordVariantAudioFileData);
 
         Queue<OpusFrame> audioFrameQueue = new LinkedList<>(opusStreamDecoder.getAudioFrames());
         return Either.right(new Word(audioFrameQueue));

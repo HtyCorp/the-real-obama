@@ -41,7 +41,12 @@ public class SpeakWorkflowInstance implements Runnable {
             return;
         }
 
+        // This check is vulnerable to race conditions and should be replaced with something more robust.
         // TODO: Queue mechanism (either a lock or an independent per-channel voice session object) in case multiple sentences get queued up
+        if (isVoiceAlreadyJoined()) {
+            messageUpdater.set("Obama is already busy speaking, try again later.");
+            return;
+        }
 
         messageUpdater.set("Obama will be giving his speech shortly...");
         AudioConnection voiceAudioConnection = joinVoiceChannel();
@@ -73,6 +78,10 @@ public class SpeakWorkflowInstance implements Runnable {
             messageUpdater.append("The following words are unknown and can't be used: " + String.join(", ", unknownWords));
             return null;
         }
+    }
+
+    private boolean isVoiceAlreadyJoined() {
+        return voiceChannel.isConnected(interaction.getApi().getYourself());
     }
 
     private AudioConnection joinVoiceChannel() {
