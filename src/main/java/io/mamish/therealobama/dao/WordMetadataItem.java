@@ -13,16 +13,18 @@ public class WordMetadataItem {
     private String variant;
     private String audioFileS3Key;
     private BookLocation bookLocation;
+    private String sourceJob;
 
     public WordMetadataItem() {
         // Default constructor for reflection
     }
 
-    public WordMetadataItem(String word, String variant, String audioFileS3Key, BookLocation bookLocation) {
+    public WordMetadataItem(String word, String variant, String audioFileS3Key, BookLocation bookLocation, String sourceJob) {
         this.word = word;
         this.variant = variant;
         this.audioFileS3Key = audioFileS3Key;
         this.bookLocation = bookLocation;
+        this.sourceJob = sourceJob;
     }
 
     @DynamoDbPartitionKey
@@ -57,6 +59,14 @@ public class WordMetadataItem {
 
     public void setBookLocation(BookLocation bookLocation) {
         this.bookLocation = bookLocation;
+    }
+
+    public String getSourceJob() {
+        return sourceJob;
+    }
+
+    public void setSourceJob(String sourceJob) {
+        this.sourceJob = sourceJob;
     }
 
     @DynamoDbBean

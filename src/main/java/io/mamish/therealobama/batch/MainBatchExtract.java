@@ -14,8 +14,9 @@ import java.lang.reflect.Type;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Optional;
+import java.util.UUID;
 
 public class MainBatchExtract {
 
@@ -44,9 +45,11 @@ public class MainBatchExtract {
         Type chapterJsonListType = new TypeToken<List<ChapterJson>>(){}.getType();
         List<ChapterJson> chapters = new Gson().fromJson(new FileReader(chapterFilePath.toFile()), chapterJsonListType);
 
+        String jobName = String.format("Vosk_V1_%s_%s", LocalDateTime.now(), UUID.randomUUID());
+
         for (int i = chapterStart; i < chapters.size() && i < (chapterStart + chapterLimit); i++) {
             new ChapterExtractWorkflow(
-                    bookName, i, chapters.get(i), audioFilePath, wordMetadataDao, wordAudioDao, voskModel
+                    jobName, bookName, i, chapters.get(i), audioFilePath, wordMetadataDao, wordAudioDao, voskModel
             ).run();
         }
     }
