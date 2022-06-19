@@ -73,6 +73,7 @@ public class ChapterExtractWorkflow implements Runnable {
                 "-ac", "1",
                 "-ar", "16k",
                 "-map_metadata", "-1",
+                "-y",
                 runChapterTranscribeFile);
         validateFile(runChapterTranscribeFile);
     }
@@ -161,6 +162,7 @@ public class ChapterExtractWorkflow implements Runnable {
                 "-i", sourceAudioFile.toString(),
                 "-c:a", "libopus",
                 "-b:a", "64k",
+                "-ar", "48k",
                 "-map_metadata", "-1",
                 "-y",
                 qualifiedAudioFileName

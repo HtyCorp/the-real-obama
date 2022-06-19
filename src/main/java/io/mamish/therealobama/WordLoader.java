@@ -21,7 +21,9 @@ public class WordLoader {
 
     public Either<String,Word> loadWord(String wordText) {
 
-        List<WordMetadataItem> wordVariants = wordMetadataDao.queryWordMetadata(wordText);
+        String wordLower = wordText.toLowerCase();
+
+        List<WordMetadataItem> wordVariants = wordMetadataDao.queryWordMetadata(wordLower);
 
         if (wordVariants.isEmpty()) {
             return Either.left(wordText);
