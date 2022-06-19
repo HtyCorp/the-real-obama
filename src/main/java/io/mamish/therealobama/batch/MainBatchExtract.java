@@ -44,7 +44,7 @@ public class MainBatchExtract {
         Type chapterJsonListType = new TypeToken<List<ChapterJson>>(){}.getType();
         List<ChapterJson> chapters = new Gson().fromJson(new FileReader(chapterFilePath.toFile()), chapterJsonListType);
 
-        for (int i = chapterStart; i < chapters.size() && i < chapterLimit; i++) {
+        for (int i = chapterStart; i < chapters.size() && i < (chapterStart + chapterLimit); i++) {
             new ChapterExtractWorkflow(
                     bookName, i, chapters.get(i), audioFilePath, wordMetadataDao, wordAudioDao, voskModel
             ).run();
