@@ -20,7 +20,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.List;
-import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -54,10 +53,9 @@ public class ChapterExtractWorkflow implements Runnable {
         this.audioDao = audioDao;
         this.voskModel = voskModel;
 
-        String runUuid = UUID.randomUUID().toString();
-        String runName = String.format("%s.c%s.%s", bookName, chapterIndex, UUID.randomUUID());
+        String runName = String.format("%s.c%s", bookName, chapterIndex);
         runChapterTranscribeFile = runName + WAV;
-        runS3Prefix = String.format("books/%s/chapter/%s/%s/", bookName, chapterIndex, runUuid);
+        runS3Prefix = String.format("books/%s/chapter/%s/", bookName, chapterIndex);
     }
 
     @Override
@@ -113,9 +111,8 @@ public class ChapterExtractWorkflow implements Runnable {
 
         try (
                 AudioInputStream audio = AudioSystem.getAudioInputStream(new BufferedInputStream(new FileInputStream(runChapterTranscribeFile)));
-                Recognizer recognizer = new Recognizer(voskModel, 16000);
+                Recognizer recognizer = new Recognizer(voskModel, 16000)
         ) {
-
             int nbytes;
             byte[] b = new byte[4096];
             recognizer.setWords(true);

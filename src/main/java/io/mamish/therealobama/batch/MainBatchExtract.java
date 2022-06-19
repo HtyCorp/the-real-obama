@@ -38,19 +38,16 @@ public class MainBatchExtract {
 
         Model voskModel = new Model(configJson.get("modelDir").getAsString());
 
-        int chapterLimit = configJson.get("chapterLimit").getAsInt();
+        int chapterStart = configJson.get("chapterStart").getAsInt();
+        int chapterLimit = configJson.get("maxChapters").getAsInt();
 
         Type chapterJsonListType = new TypeToken<List<ChapterJson>>(){}.getType();
         List<ChapterJson> chapters = new Gson().fromJson(new FileReader(chapterFilePath.toFile()), chapterJsonListType);
 
-        for (int i = 0; i < chapters.size() && i < chapterLimit; i++) {
+        for (int i = chapterStart; i < chapters.size() && i < chapterLimit; i++) {
             new ChapterExtractWorkflow(
                     bookName, i, chapters.get(i), audioFilePath, wordMetadataDao, wordAudioDao, voskModel
             ).run();
         }
-    }
-
-    private static String envNonNull(String key) {
-        return Optional.ofNullable(System.getenv(key)).orElseThrow();
     }
 }

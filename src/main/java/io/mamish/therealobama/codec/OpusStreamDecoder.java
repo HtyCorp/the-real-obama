@@ -47,26 +47,26 @@ public class OpusStreamDecoder {
 
         int version = toUnsignedInt(data.get());
         if (version != OPUS_PROTOCOL_VERSION) {
-            throw new OpusDecodeException("Unexpected Opus protocol version field");
+            throw new OpusDecodeException("Unexpected Opus protocol version field, got " + version);
         }
 
         int channelCount = toUnsignedInt(data.get());
         if (channelCount != 2) {
-            throw new OpusDecodeException("Expecting stereo frames, got a different channel count");
+            throw new OpusDecodeException("Expecting stereo frames, got channel count " + channelCount);
         }
 
         data.getShort(); // Pre-skip value, unused
 
         int sampleRate = data.getInt();
         if (sampleRate != SAMPLE_RATE_48KHZ) {
-            throw new OpusDecodeException("Expecting 48KHz sample rate audio");
+            throw new OpusDecodeException("Expecting 48KHz sample rate audio, got " + sampleRate);
         }
 
         data.getShort(); // Output gain, unused
 
         byte channelMappingFamily = data.get();
         if (channelMappingFamily != CHANNEL_MAPPING_FAMILY_MONO_STEREO) {
-            throw new OpusDecodeException("Expected standard mono/stereo channel mapping family");
+            throw new OpusDecodeException("Expected standard mono/stereo channel mapping family, instead got " + channelMappingFamily);
         }
 
         if (data.hasRemaining()) {
