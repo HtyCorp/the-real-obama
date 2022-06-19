@@ -1,31 +1,35 @@
 package io.mamish.therealobama.batch;
 
 import com.google.gson.Gson;
-import com.google.gson.JsonParseException;
-import com.google.gson.JsonParser;
 import io.mamish.therealobama.dao.WordAudioDao;
 import io.mamish.therealobama.dao.WordMetadataDao;
 import io.mamish.therealobama.dao.WordMetadataItem;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import software.amazon.awssdk.services.transcribe.TranscribeClient;
-import software.amazon.awssdk.services.transcribe.model.LanguageCode;
-import software.amazon.awssdk.services.transcribe.model.TranscriptionJob;
+import org.vosk.Model;
+import org.vosk.Recognizer;
 
+import javax.sound.sampled.AudioInputStream;
+import javax.sound.sampled.AudioSystem;
+import javax.sound.sampled.UnsupportedAudioFileException;
+import java.io.BufferedInputStream;
+import java.io.FileInputStream;
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.*;
+import java.util.Arrays;
+import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-
-import static software.amazon.awssdk.services.transcribe.model.TranscriptionJobStatus.*;
 
 public class ChapterExtractWorkflow implements Runnable {
 
     private static final Logger log = LoggerFactory.getLogger(ChapterExtractWorkflow.class);
     private static final Gson gson = new Gson();
 
+    private static final String WAV = ".wav";
     private static final String OPUS = ".opus";
     private static final String JSON = ".json";
 
@@ -35,51 +39,44 @@ public class ChapterExtractWorkflow implements Runnable {
     private final Path sourceAudioFile;
     private final WordMetadataDao metadataDao;
     private final WordAudioDao audioDao;
+    private final Model voskModel;
 
-    private final String runName;
-    private final String runChapterAudioFileName;
+    private final String runChapterTranscribeFile;
     private final String runS3Prefix;
 
     public ChapterExtractWorkflow(String bookName, int chapterIndex, ChapterJson chapter, Path sourceAudioFile,
-                                  WordMetadataDao metadataDao, WordAudioDao audioDao) {
+                                  WordMetadataDao metadataDao, WordAudioDao audioDao, Model voskModel) {
         this.bookName = bookName;
         this.chapterIndex = chapterIndex;
         this.chapter = chapter;
         this.sourceAudioFile = sourceAudioFile;
         this.metadataDao = metadataDao;
         this.audioDao = audioDao;
+        this.voskModel = voskModel;
 
         String runUuid = UUID.randomUUID().toString();
-        runName = String.format("%s.c%s.%s", bookName, chapterIndex, UUID.randomUUID());
-        runChapterAudioFileName = runName + OPUS;
+        String runName = String.format("%s.c%s.%s", bookName, chapterIndex, UUID.randomUUID());
+        runChapterTranscribeFile = runName + WAV;
         runS3Prefix = String.format("books/%s/chapter/%s/%s/", bookName, chapterIndex, runUuid);
     }
 
     @Override
     public void run() {
-        convertSourceToOpusFile();
-
-        audioDao.putTranscribeInputFile(runS3Prefix + runChapterAudioFileName, Paths.get(runChapterAudioFileName));
-
-        var transcribeResults = runTranscriptionJob();
-
-        transcribeResults.getItems().forEach(item -> {
-            if (item.isPronunciationType()) {
-                var alternativeChoice = selectItemAlternative(item);
-                uploadWord(item, alternativeChoice);
-            }
-        });
+        writeTranscribeAudioFile();
+        var transcribeResults = runLocalTranscription();
+        transcribeResults.getResult().forEach(this::uploadWord);
     }
 
-    private void convertSourceToOpusFile() {
+    private void writeTranscribeAudioFile() {
         runFfmpeg(
                 "-ss", chapter.getStartSeconds(),
                 "-t", chapter.getLengthSeconds(),
                 "-i", sourceAudioFile.toString(),
-                "-c:a", "libopus",
-                "-b:a", "64k",
-                runChapterAudioFileName);
-        validateFile(runChapterAudioFileName);
+                "-ac", "1",
+                "-ar", "16k",
+                "-map_metadata", "-1",
+                runChapterTranscribeFile);
+        validateFile(runChapterTranscribeFile);
     }
 
     private void runFfmpeg(String... args) {
@@ -111,67 +108,50 @@ public class ChapterExtractWorkflow implements Runnable {
         }
     }
 
-    private TranscriptionOutput runTranscriptionJob() {
-        var inputKey = runS3Prefix + runName + OPUS;
-        var outputKey = runS3Prefix + runName + JSON;
+    private VoskRecogniserJson runLocalTranscription() {
+        VoskRecogniserJson voskJson;
 
-        try (var transcribeClient = TranscribeClient.create()) {
-            transcribeClient.startTranscriptionJob(r -> r
-                    .languageCode(LanguageCode.EN_US)
-                    .media(m -> m.mediaFileUri(WordAudioDao.getTranscribeInputFileUri(inputKey)))
-                    .outputBucketName(WordAudioDao.TRANSCRIBE_OUTPUT_BUCKET)
-                    .outputKey(outputKey)
-                    //.settings(s -> s.showAlternatives(true).maxAlternatives(5))
-                    .transcriptionJobName(runName));
+        try (
+                AudioInputStream audio = AudioSystem.getAudioInputStream(new BufferedInputStream(new FileInputStream(runChapterTranscribeFile)));
+                Recognizer recognizer = new Recognizer(voskModel, 16000);
+        ) {
 
-            TranscriptionJob transcriptionJob;
-            do {
-                try {
-                    Thread.sleep(10000);
-                } catch (InterruptedException e) {
-                    throw new RuntimeException("Unexpected interrupt while polling Transcribe");
-                }
-                transcriptionJob = transcribeClient.getTranscriptionJob(r -> r.transcriptionJobName(runName)).transcriptionJob();
-                log.info("Transcribe job {} has status {}", transcriptionJob.transcriptionJobName(), transcriptionJob.transcriptionJobStatus());
-            } while (Set.of(QUEUED, IN_PROGRESS).contains(transcriptionJob.transcriptionJobStatus()));
+            int nbytes;
+            byte[] b = new byte[4096];
+            recognizer.setWords(true);
 
-            if (transcriptionJob.transcriptionJobStatus() == FAILED) {
-                throw new RuntimeException("Transcription job failed: " + transcriptionJob.failureReason());
+            while ((nbytes = audio.read(b)) >= 0) {
+                recognizer.acceptWaveForm(b, nbytes);
             }
+
+            voskJson = gson.fromJson(recognizer.getFinalResult(), VoskRecogniserJson.class);
+
+        } catch (IOException | UnsupportedAudioFileException e) {
+            throw new RuntimeException(e);
         }
 
-        var rawJson = audioDao.getTranscribeOutputJson(outputKey);
-        var resultsObj = JsonParser.parseString(rawJson).getAsJsonObject()
-                .get("results").getAsJsonObject();
-        return gson.fromJson(resultsObj, TranscriptionOutput.class);
+        return voskJson;
     }
 
-    private TranscriptionOutput.Item.Alternative selectItemAlternative(TranscriptionOutput.Item item) {
-       return item.getAlternatives().stream()
-                .max(Comparator.comparing(TranscriptionOutput.Item.Alternative::getConfidence))
-                .orElseThrow();
-    }
-
-    private void uploadWord(TranscriptionOutput.Item item, TranscriptionOutput.Item.Alternative choice) {
-
-        // TODO: Need a new approach. Transcribe word boundaries aren't precise enough :(
+    private void uploadWord(VoskRecogniserJson.Item item) {
 
         // Metadata
 
-        var itemStartMsChapter = secondsToMillis(item.getStartTimeSeconds());
+        var itemStartMsChapter = secondsToMillis(item.getStart());
         var itemStartMsBook = itemStartMsChapter + secondsToMillis(chapter.getStartSeconds());
-        var itemEndMsChapter = secondsToMillis(item.getEndTimeSeconds());
+        var itemEndMsChapter = secondsToMillis(item.getEnd());
         var itemLengthMs = itemEndMsChapter - itemStartMsChapter;
 
         var variantName = bookName + "_" + itemStartMsBook; // Timestamp is unique and easy to track to a book location
-        var audioFileName = choice.getContent() + "_" + itemStartMsBook + OPUS;
+        var audioFileName = item.getWord() + "_" + itemStartMsBook + OPUS;
+        var qualifiedAudioFileName = "words/" + audioFileName;
         var audioS3Key = runS3Prefix + audioFileName;
 
         var bookLocation = new WordMetadataItem.BookLocation(
                 bookName, chapterIndex, itemStartMsBook, itemStartMsChapter, itemLengthMs
         );
         var newWordMetadata = new WordMetadataItem(
-                choice.getContent(), variantName, audioS3Key, bookLocation
+                item.getWord(), variantName, audioS3Key, bookLocation
         );
         log.info("Uploading word metadata: " + newWordMetadata);
         metadataDao.putWordMetadata(newWordMetadata);
@@ -179,14 +159,17 @@ public class ChapterExtractWorkflow implements Runnable {
         // Audio
 
         runFfmpeg(
-                "-ss", item.getStartTimeSeconds(),
-                "-to", item.getEndTimeSeconds(),
-                "-i", runChapterAudioFileName,
-                "-c", "copy",
-                audioFileName
+                "-ss", String.format("%.4f", itemStartMsBook / 1000f),
+                "-t", String.format("%.4f", itemLengthMs / 1000f),
+                "-i", sourceAudioFile.toString(),
+                "-c:a", "libopus",
+                "-b:a", "64k",
+                "-map_metadata", "-1",
+                "-y",
+                qualifiedAudioFileName
         );
-        log.info("Uploading word file {} to S3 key {}", audioFileName, audioS3Key);
-        audioDao.putAudioWordFile(audioS3Key, Paths.get(audioFileName));
+        log.info("Uploading word file {} to S3 key {}", qualifiedAudioFileName, audioS3Key);
+        audioDao.putAudioWordFile(audioS3Key, Paths.get(qualifiedAudioFileName));
     }
 
     private long secondsToMillis(String seconds) {

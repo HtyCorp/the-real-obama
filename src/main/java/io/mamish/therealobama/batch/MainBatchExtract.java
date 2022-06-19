@@ -1,9 +1,12 @@
 package io.mamish.therealobama.batch;
 
 import com.google.gson.Gson;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import com.google.gson.reflect.TypeToken;
 import io.mamish.therealobama.dao.WordAudioDao;
 import io.mamish.therealobama.dao.WordMetadataDao;
+import org.vosk.Model;
 
 import java.io.FileReader;
 import java.io.IOException;
@@ -22,22 +25,27 @@ public class MainBatchExtract {
         WordAudioDao wordAudioDao = new WordAudioDao();
 
         // Env vars are not the best solution here, but getting parameters in from a Gradle task isn't that easy
-        String bookName = envNonNull("EXTRACT_BOOK_NAME");
-        Path audioFilePath = Paths.get(envNonNull("EXTRACT_AUDIO_FILE"));
+        JsonObject configJson = JsonParser.parseReader(new FileReader("config.json")).getAsJsonObject();
+        String bookName = configJson.get("bookName").getAsString();
+        Path audioFilePath = Paths.get(configJson.get("audioFile").getAsString());
         if (!Files.isRegularFile(audioFilePath)) {
             throw new IllegalArgumentException("Audio file is a regular file");
         }
-        Path chapterFilePath = Paths.get(envNonNull("EXTRACT_CHAPTERS_FILE"));
+        Path chapterFilePath = Paths.get(configJson.get("chaptersFile").getAsString());
         if (!Files.isRegularFile(chapterFilePath)) {
             throw new IllegalArgumentException("Chapters file is not a regular file");
         }
 
+        Model voskModel = new Model(configJson.get("modelDir").getAsString());
+
+        int chapterLimit = configJson.get("chapterLimit").getAsInt();
+
         Type chapterJsonListType = new TypeToken<List<ChapterJson>>(){}.getType();
         List<ChapterJson> chapters = new Gson().fromJson(new FileReader(chapterFilePath.toFile()), chapterJsonListType);
 
-        for (int i = 0; i < chapters.size(); i++) {
+        for (int i = 0; i < chapters.size() && i < chapterLimit; i++) {
             new ChapterExtractWorkflow(
-                    bookName, i, chapters.get(i), audioFilePath, wordMetadataDao, wordAudioDao
+                    bookName, i, chapters.get(i), audioFilePath, wordMetadataDao, wordAudioDao, voskModel
             ).run();
         }
     }
