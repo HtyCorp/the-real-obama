@@ -54,7 +54,7 @@ public class SpeakWorkflowInstance implements Runnable {
         messageUpdater.set("Obama is giving his speech...");
         completeSpeech(sentence, voiceAudioConnection);
 
-        messageUpdater.set("Obama has spoken");
+        messageUpdater.set(finalSignoffText());
         leaveVoice(voiceAudioConnection);
     }
 
@@ -99,6 +99,11 @@ public class SpeakWorkflowInstance implements Runnable {
         } catch (ExecutionException e) {
             throw new RuntimeException("Unexpected audio source execution exception", e);
         }
+    }
+
+    private String finalSignoffText() {
+        var transcriptCopy = transcriptWords.stream().collect(Collectors.joining(" ", "\"", "\""));
+        return "Obama has spoken: " + transcriptCopy;
     }
 
     private void leaveVoice(AudioConnection audioConnection) {
