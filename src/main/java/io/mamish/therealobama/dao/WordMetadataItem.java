@@ -14,6 +14,7 @@ public class WordMetadataItem {
     private String audioFileS3Key;
     private BookLocation bookLocation;
     private String sourceJob;
+    private boolean manuallyExcluded;
 
     public WordMetadataItem() {
         // Default constructor for reflection
@@ -67,6 +68,14 @@ public class WordMetadataItem {
 
     public void setSourceJob(String sourceJob) {
         this.sourceJob = sourceJob;
+    }
+
+    public boolean isManuallyExcluded() {
+        return manuallyExcluded;
+    }
+
+    public void setManuallyExcluded(boolean manuallyExcluded) {
+        this.manuallyExcluded = manuallyExcluded;
     }
 
     @DynamoDbBean
@@ -129,5 +138,28 @@ public class WordMetadataItem {
         public void setLengthMs(long lengthMs) {
             this.lengthMs = lengthMs;
         }
+
+        @Override
+        public String toString() {
+            return "BookLocation{" +
+                    "book='" + book + '\'' +
+                    ", chapterIndex=" + chapterIndex +
+                    ", bookStartMs=" + bookStartMs +
+                    ", chapterStartMs=" + chapterStartMs +
+                    ", lengthMs=" + lengthMs +
+                    '}';
+        }
+    }
+
+    @Override
+    public String toString() {
+        return "WordMetadataItem{" +
+                "word='" + word + '\'' +
+                ", variant='" + variant + '\'' +
+                ", audioFileS3Key='" + audioFileS3Key + '\'' +
+                ", bookLocation=" + bookLocation +
+                ", sourceJob='" + sourceJob + '\'' +
+                ", manuallyExcluded=" + manuallyExcluded +
+                '}';
     }
 }

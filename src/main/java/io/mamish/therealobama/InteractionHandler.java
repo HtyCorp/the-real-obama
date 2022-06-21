@@ -78,7 +78,7 @@ public class InteractionHandler implements SlashCommandCreateListener {
     }
 
     private List<String> tokenizeScript(String script) {
-        return Arrays.stream(script.split("[^A-Za-z\\d]+"))
+        return Arrays.stream(script.split("[^A-Za-z\\d']+"))
                 .filter(not(String::isBlank))
                 .collect(Collectors.toList());
     }
