@@ -9,7 +9,7 @@ import java.util.concurrent.CompletableFuture;
 
 public class SentenceAudioSource extends AudioSourceBase {
 
-    private static final int NUM_PAUSE_FRAMES_BETWEEN_WORDS = 4; // x20ms = 80ms
+    private static final int NUM_PAUSE_FRAMES_BETWEEN_WORDS = 0; // x20ms = 80ms
 
     private final Sentence sentence;
     private final CompletableFuture<Void> onLastFrameFuture;
