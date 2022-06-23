@@ -14,10 +14,14 @@ import java.util.List;
 import java.util.Queue;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.locks.Lock;
 import java.util.stream.Collectors;
 
 public class SpeakWorkflowInstance implements Runnable {
+
+    private static final long SPEECH_LIMIT_SECONDS = 45;
 
     private final SlashCommandInteraction interaction;
     private final InteractionMessageUpdater messageUpdater;
@@ -49,17 +53,21 @@ public class SpeakWorkflowInstance implements Runnable {
             serverVoiceLock.lock();
         }
 
-        messageUpdater.set("Obama will be giving his speech shortly...");
-        AudioConnection voiceAudioConnection = joinVoiceChannel();
+        try {
+            messageUpdater.set("Obama will be giving his speech shortly...");
+            AudioConnection voiceAudioConnection = joinVoiceChannel();
 
-        messageUpdater.set("Obama is giving his speech...");
-        completeSpeech(sentence, voiceAudioConnection);
+            messageUpdater.set("Obama is giving his speech...");
+            completeSpeech(sentence, voiceAudioConnection);
 
-        messageUpdater.set(finalSignoffText());
-        leaveVoice(voiceAudioConnection);
+            messageUpdater.set(finalSignoffText());
+            leaveVoice(voiceAudioConnection);
 
-        // Don't release the lock: the surrounding interaction handler does it automatically (in case something fails)
-        // This is not 100% robust (e.g. if a failure occurs before lock acquire) but it's still better than before.
+        } catch (RuntimeException e) {
+            // If an unchecked exception occurs, don't catch it but do unlock the lock
+            serverVoiceLock.unlock();
+            throw e;
+        }
     }
 
     private Sentence loadSentence() {
@@ -93,11 +101,13 @@ public class SpeakWorkflowInstance implements Runnable {
         AudioSource speechAudio = new SentenceAudioSource(interaction.getApi(), sentence, waitSpeechFinished);
         audioConnection.setAudioSource(speechAudio);
         try {
-            waitSpeechFinished.get();
+            waitSpeechFinished.get(SPEECH_LIMIT_SECONDS, TimeUnit.SECONDS);
         } catch (InterruptedException e) {
             throw new RuntimeException("Unexpectedly interrupted while waiting for audio source completion");
         } catch (ExecutionException e) {
             throw new RuntimeException("Unexpected audio source execution exception", e);
+        } catch (TimeoutException e) {
+            throw new RuntimeException("Speech finish marker didn't complete quickly enough", e);
         }
     }
 

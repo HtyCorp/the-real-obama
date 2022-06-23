@@ -77,7 +77,7 @@ public class InteractionHandler implements SlashCommandCreateListener {
             } catch (TimeoutException e) {
                 messageUpdater.append("Obama has run out of time to give his speech");
             } finally {
-                voiceLock.unlock();
+                workflowFuture.cancel(true);
             }
         });
     }
