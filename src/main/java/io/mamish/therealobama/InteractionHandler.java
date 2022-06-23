@@ -7,7 +7,10 @@ import org.javacord.api.listener.interaction.SlashCommandCreateListener;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.*;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 
 import static java.util.function.Predicate.not;
@@ -20,8 +23,8 @@ public class InteractionHandler implements SlashCommandCreateListener {
     private static final String SCRIPT_ARG_NAME = "script";
     private static final String SCRIPT_ARG_DESCRIPTION = "The full script for Obama to say";
 
-    private final ExecutorService workflowThreadPool = Executors.newCachedThreadPool();
     private final WordLoader wordLoader = new WordLoader();
+    private final Map<Long, Lock> serverIdToVoiceLock = new ConcurrentHashMap<>();
 
     public void putSlashCommands(DiscordApi discordApi) {
         SlashCommand.with(COMMAND_NAME, COMMAND_DESCRIPTION, List.of(SlashCommandOption.create(
@@ -58,7 +61,11 @@ public class InteractionHandler implements SlashCommandCreateListener {
             return;
         }
 
-        SpeakWorkflowInstance workflowInstance = new SpeakWorkflowInstance(command, messageUpdater, maybeUserVoiceChannel.get(), transcriptWords, wordLoader);
+        var voiceLock = serverIdToVoiceLock.computeIfAbsent(maybeUserVoiceChannel.get().getServer().getId(), _id -> new ReentrantLock(true));
+
+        SpeakWorkflowInstance workflowInstance = new SpeakWorkflowInstance(
+                command, messageUpdater, maybeUserVoiceChannel.get(), transcriptWords, wordLoader, voiceLock
+        );
         CompletableFuture<Void> workflowFuture = CompletableFuture.runAsync(workflowInstance);
         CompletableFuture.runAsync(() -> {
             try {
@@ -69,6 +76,8 @@ public class InteractionHandler implements SlashCommandCreateListener {
                 messageUpdater.append("Obama ran into a problem, apparently '" + e.getCause().getMessage() + "'");
             } catch (TimeoutException e) {
                 messageUpdater.append("Obama has run out of time to give his speech");
+            } finally {
+                voiceLock.unlock();
             }
         });
     }

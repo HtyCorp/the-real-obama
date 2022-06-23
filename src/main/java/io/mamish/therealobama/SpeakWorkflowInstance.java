@@ -14,6 +14,7 @@ import java.util.List;
 import java.util.Queue;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.locks.Lock;
 import java.util.stream.Collectors;
 
 public class SpeakWorkflowInstance implements Runnable {
@@ -23,14 +24,16 @@ public class SpeakWorkflowInstance implements Runnable {
     private final ServerVoiceChannel voiceChannel;
     private final List<String> transcriptWords;
     private final WordLoader wordLoader;
+    private final Lock serverVoiceLock;
 
     public SpeakWorkflowInstance(SlashCommandInteraction interaction, InteractionMessageUpdater messageUpdater, ServerVoiceChannel voiceChannel,
-                                 List<String> transcriptWords, WordLoader wordLoader) {
+                                 List<String> transcriptWords, WordLoader wordLoader, Lock serverVoiceLock) {
         this.interaction = interaction;
         this.messageUpdater = messageUpdater;
         this.voiceChannel = voiceChannel;
         this.transcriptWords = transcriptWords;
         this.wordLoader = wordLoader;
+        this.serverVoiceLock = serverVoiceLock;
     }
 
     @Override
@@ -41,11 +44,9 @@ public class SpeakWorkflowInstance implements Runnable {
             return;
         }
 
-        // This check is vulnerable to race conditions and should be replaced with something more robust.
-        // TODO: Queue mechanism (either a lock or an independent per-channel voice session object) in case multiple sentences get queued up
-        if (isVoiceAlreadyJoined()) {
-            messageUpdater.set("Obama is already busy speaking, try again later.");
-            return;
+        if (!serverVoiceLock.tryLock()) {
+            messageUpdater.set("Obama is still finishing up another speech in this server...");
+            serverVoiceLock.lock();
         }
 
         messageUpdater.set("Obama will be giving his speech shortly...");
@@ -56,6 +57,9 @@ public class SpeakWorkflowInstance implements Runnable {
 
         messageUpdater.set(finalSignoffText());
         leaveVoice(voiceAudioConnection);
+
+        // Don't release the lock: the surrounding interaction handler does it automatically (in case something fails)
+        // This is not 100% robust (e.g. if a failure occurs before lock acquire) but it's still better than before.
     }
 
     private Sentence loadSentence() {
@@ -78,10 +82,6 @@ public class SpeakWorkflowInstance implements Runnable {
             messageUpdater.append("The following words are unknown and can't be used: " + String.join(", ", unknownWords));
             return null;
         }
-    }
-
-    private boolean isVoiceAlreadyJoined() {
-        return voiceChannel.isConnected(interaction.getApi().getYourself());
     }
 
     private AudioConnection joinVoiceChannel() {
