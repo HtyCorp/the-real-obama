@@ -63,10 +63,9 @@ public class SpeakWorkflowInstance implements Runnable {
             messageUpdater.set(finalSignoffText());
             leaveVoice(voiceAudioConnection);
 
-        } catch (RuntimeException e) {
-            // If an unchecked exception occurs, don't catch it but do unlock the lock
+        } finally {
+            // Always release voice lock, even if an exception occurs
             serverVoiceLock.unlock();
-            throw e;
         }
     }
 
