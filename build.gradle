@@ -7,6 +7,9 @@ plugins {
 group 'io.mamish'
 version '1.0-SNAPSHOT'
 
+sourceCompatibility = '17'
+targetCompatibility = '17'
+
 repositories {
     mavenCentral()
 }

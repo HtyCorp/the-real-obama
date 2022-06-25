@@ -23,6 +23,9 @@ public class InteractionHandler implements SlashCommandCreateListener {
     private static final String SCRIPT_ARG_NAME = "script";
     private static final String SCRIPT_ARG_DESCRIPTION = "The full script for Obama to say";
 
+    private static final String DEFAULTDANCE_COMMAND_NAME = "default";
+    private static final String DEFAULTDANCE_COMMAND_DESCRIPTION = "now that's pretty poggers";
+
     private final WordLoader wordLoader = new WordLoader();
     private final Map<Long, Lock> serverIdToVoiceLock = new ConcurrentHashMap<>();
 
@@ -33,6 +36,8 @@ public class InteractionHandler implements SlashCommandCreateListener {
                 SCRIPT_ARG_DESCRIPTION,
                 true
         ))).createGlobal(discordApi).join();
+
+        SlashCommand.with(DEFAULTDANCE_COMMAND_NAME, DEFAULTDANCE_COMMAND_DESCRIPTION).createGlobal(discordApi).join();
     }
 
     @Override
@@ -41,6 +46,8 @@ public class InteractionHandler implements SlashCommandCreateListener {
         if (slashCommandInteraction.getCommandName().equals(COMMAND_NAME)) {
             String script = event.getSlashCommandInteraction().getOptionByIndex(0).flatMap(SlashCommandInteractionOption::getStringValue).orElseThrow();
             handleObamaSayCommand(slashCommandInteraction, script);
+        } else if (slashCommandInteraction.getCommandName().equals(DEFAULTDANCE_COMMAND_NAME)) {
+            handleDefaultdanceCommand(slashCommandInteraction);
         } else {
             handleUnknownCommand(slashCommandInteraction);
         }
@@ -76,6 +83,33 @@ public class InteractionHandler implements SlashCommandCreateListener {
                 messageUpdater.append("Obama ran into a problem, apparently '" + e.getCause().getMessage() + "'");
             } catch (TimeoutException e) {
                 messageUpdater.append("Obama has run out of time to give his speech");
+            } finally {
+                workflowFuture.cancel(true);
+            }
+        });
+    }
+
+    private void handleDefaultdanceCommand(SlashCommandInteraction command) {
+        InteractionMessageUpdater messageUpdater = new InteractionMessageUpdater(command);
+        var maybeUserVoiceChannel = command.getUser().getConnectedVoiceChannels().stream().findAny();
+        if (maybeUserVoiceChannel.isEmpty()) {
+            messageUpdater.set("You need to be in a voice channel for this");
+            return;
+        }
+
+        var defaultdanceWorkflowInstance = new DefaultDanceWorkflowInstance(
+                command, maybeUserVoiceChannel.get(), messageUpdater
+        );
+        CompletableFuture<Void> workflowFuture = CompletableFuture.runAsync(defaultdanceWorkflowInstance);
+        CompletableFuture.runAsync(() -> {
+            try {
+                workflowFuture.get(COMMAND_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+            } catch (InterruptedException e) {
+                messageUpdater.append("Dance unexpectedly interrupted");
+            } catch (ExecutionException e) {
+                messageUpdater.append("Dance ran into a problem: " + e.getCause().getMessage());
+            } catch (TimeoutException e) {
+                messageUpdater.append("Dance ran out of time");
             } finally {
                 workflowFuture.cancel(true);
             }
