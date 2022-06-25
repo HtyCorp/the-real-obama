@@ -18,7 +18,7 @@ import java.util.concurrent.TimeUnit;
 
 public class DefaultDanceWorkflowInstance implements Runnable {
 
-    private static final long FRAME_INTERVAL_MILLIS = 667; // Approx 90bpm or 2/3 seconds interval
+    private static final long FRAME_INTERVAL_MILLIS = 1334; // Approx 90bpm or 2/3 seconds interval, at half rate due to discord message update rate limits
 
     private final SlashCommandInteraction interaction;
     private final ServerVoiceChannel voiceChannel;
