@@ -25,8 +25,8 @@ public class MainBatchExtract {
         WordMetadataDao wordMetadataDao = new WordMetadataDao();
         WordAudioDao wordAudioDao = new WordAudioDao();
 
-        // Env vars are not the best solution here, but getting parameters in from a Gradle task isn't that easy
         JsonObject configJson = JsonParser.parseReader(new FileReader("config.json")).getAsJsonObject();
+        String wordPrefix = configJson.get("workPrefix").getAsString();
         String bookName = configJson.get("bookName").getAsString();
         Path audioFilePath = Paths.get(configJson.get("audioFile").getAsString());
         if (!Files.isRegularFile(audioFilePath)) {
@@ -49,7 +49,7 @@ public class MainBatchExtract {
 
         for (int i = chapterStart; i < chapters.size() && i < (chapterStart + chapterLimit); i++) {
             new ChapterExtractWorkflow(
-                    jobName, bookName, i, chapters.get(i), audioFilePath, wordMetadataDao, wordAudioDao, voskModel
+                    wordPrefix, jobName, bookName, i, chapters.get(i), audioFilePath, wordMetadataDao, wordAudioDao, voskModel
             ).run();
         }
     }

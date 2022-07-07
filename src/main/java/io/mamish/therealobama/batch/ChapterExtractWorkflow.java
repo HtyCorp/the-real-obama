@@ -31,6 +31,7 @@ public class ChapterExtractWorkflow implements Runnable {
     private static final String WAV = ".wav";
     private static final String OPUS = ".opus";
 
+    private final String wordPrefix;
     private final String sourceJob;
     private final String bookName;
     private final int chapterIndex;
@@ -43,8 +44,9 @@ public class ChapterExtractWorkflow implements Runnable {
     private final String runChapterTranscribeFile;
     private final String runS3Prefix;
 
-    public ChapterExtractWorkflow(String sourceJob, String bookName, int chapterIndex, ChapterJson chapter, Path sourceAudioFile,
+    public ChapterExtractWorkflow(String wordPrefix, String sourceJob, String bookName, int chapterIndex, ChapterJson chapter, Path sourceAudioFile,
                                   WordMetadataDao metadataDao, WordAudioDao audioDao, Model voskModel) {
+        this.wordPrefix = wordPrefix;
         this.sourceJob = sourceJob;
         this.bookName = bookName;
         this.chapterIndex = chapterIndex;
@@ -149,8 +151,9 @@ public class ChapterExtractWorkflow implements Runnable {
         var bookLocation = new WordMetadataItem.BookLocation(
                 bookName, chapterIndex, itemStartMsBook, itemStartMsChapter, itemLengthMs
         );
+        var wordWithPrefix = this.wordPrefix + item.getWord();
         var newWordMetadata = new WordMetadataItem(
-                item.getWord(), variantName, audioS3Key, bookLocation, sourceJob
+                wordWithPrefix, variantName, audioS3Key, bookLocation, sourceJob
         );
         log.info("Uploading word metadata: " + newWordMetadata);
         metadataDao.putWordMetadata(newWordMetadata);
