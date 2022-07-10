@@ -26,7 +26,7 @@ public class MainBatchExtract {
         WordAudioDao wordAudioDao = new WordAudioDao();
 
         JsonObject configJson = JsonParser.parseReader(new FileReader("config.json")).getAsJsonObject();
-        String wordPrefix = configJson.get("workPrefix").getAsString();
+        String wordPrefix = configJson.get("wordPrefix").getAsString();
         String bookName = configJson.get("bookName").getAsString();
         Path audioFilePath = Paths.get(configJson.get("audioFile").getAsString());
         if (!Files.isRegularFile(audioFilePath)) {
