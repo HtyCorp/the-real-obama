@@ -25,11 +25,11 @@ public class WordLoader {
     private final WordMetadataDao wordMetadataDao = new WordMetadataDao();
     private final WordAudioDao wordAudioDao = new WordAudioDao();
 
-    public Either<String,Word> loadWord(String wordText) {
+    public Either<String,Word> loadWord(String characterId, String wordText) {
 
         String wordLower = wordText.toLowerCase();
 
-        List<WordMetadataItem> wordVariants = wordMetadataDao.queryWordMetadata(wordLower);
+        List<WordMetadataItem> wordVariants = wordMetadataDao.queryWordMetadata(characterId + ":" + wordLower);
 
         if (wordVariants.isEmpty()) {
             return Either.left(wordText);

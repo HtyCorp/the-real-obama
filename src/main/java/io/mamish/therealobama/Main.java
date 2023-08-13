@@ -5,23 +5,29 @@ import software.amazon.awssdk.services.secretsmanager.SecretsManagerClient;
 
 public class Main {
 
-    private static final String BOT_TOKEN_SECRET_NAME = "DiscordBotToken";
-
     private static final SecretsManagerClient secretsManagerClient = SecretsManagerClient.create();
 
     public static void main(String[] args) {
-        var botTokenString = fetchBotToken();
+
         var interactionHandler = new InteractionHandler();
         var discordApi = new DiscordApiBuilder()
-                .setToken(botTokenString)
+                .setToken(fetchBotToken())
                 .addSlashCommandCreateListener(interactionHandler)
                 .login()
                 .join();
-        interactionHandler.putSlashCommands(discordApi);
+        var hamishCharacterDiscordApi = new DiscordApiBuilder()
+                .setToken(fetchHamishCharacterBotToken())
+                .addSlashCommandCreateListener(interactionHandler)
+                .login()
+                .join();
+        interactionHandler.putSlashCommands(discordApi, hamishCharacterDiscordApi);
     }
 
     private static String fetchBotToken() {
-        return secretsManagerClient.getSecretValue(r -> r.secretId(BOT_TOKEN_SECRET_NAME)).secretString();
+        return secretsManagerClient.getSecretValue(r -> r.secretId("DiscordBotToken")).secretString();
     }
 
+    private static String fetchHamishCharacterBotToken() {
+        return secretsManagerClient.getSecretValue(r -> r.secretId("HamishCharacterDiscordBotToken")).secretString();
+    }
 }

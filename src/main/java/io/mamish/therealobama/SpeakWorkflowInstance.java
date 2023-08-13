@@ -26,15 +26,20 @@ public class SpeakWorkflowInstance implements Runnable {
     private final SlashCommandInteraction interaction;
     private final InteractionMessageUpdater messageUpdater;
     private final ServerVoiceChannel voiceChannel;
+    private final String characterId;
+    private final String characterDisplayName;
     private final List<String> transcriptWords;
     private final WordLoader wordLoader;
     private final Lock serverVoiceLock;
 
-    public SpeakWorkflowInstance(SlashCommandInteraction interaction, InteractionMessageUpdater messageUpdater, ServerVoiceChannel voiceChannel,
+    public SpeakWorkflowInstance(SlashCommandInteraction interaction, InteractionMessageUpdater messageUpdater,
+                                 ServerVoiceChannel voiceChannel, String characterId, String characterDisplayName,
                                  List<String> transcriptWords, WordLoader wordLoader, Lock serverVoiceLock) {
         this.interaction = interaction;
         this.messageUpdater = messageUpdater;
         this.voiceChannel = voiceChannel;
+        this.characterId = characterId;
+        this.characterDisplayName = characterDisplayName;
         this.transcriptWords = transcriptWords;
         this.wordLoader = wordLoader;
         this.serverVoiceLock = serverVoiceLock;
@@ -42,22 +47,22 @@ public class SpeakWorkflowInstance implements Runnable {
 
     @Override
     public void run() {
-        messageUpdater.set("Obama is preparing his speech...");
+        messageUpdater.set(characterFmt("%s is preparing his speech..."));
         Sentence sentence = loadSentence();
         if (sentence == null) {
             return;
         }
 
         if (!serverVoiceLock.tryLock()) {
-            messageUpdater.set("Obama is still finishing up another speech in this server...");
+            messageUpdater.set(characterFmt("%s is still finishing up another speech in this server..."));
             serverVoiceLock.lock();
         }
 
         try {
-            messageUpdater.set("Obama will be giving his speech shortly...");
+            messageUpdater.set(characterFmt("%s will be speaking shortly..."));
             AudioConnection voiceAudioConnection = joinVoiceChannel();
 
-            messageUpdater.set("Obama is giving his speech...");
+            messageUpdater.set(characterFmt("%s is speaking..."));
             completeSpeech(sentence, voiceAudioConnection);
 
             messageUpdater.set(finalSignoffText());
@@ -71,7 +76,7 @@ public class SpeakWorkflowInstance implements Runnable {
 
     private Sentence loadSentence() {
         List<Either<String,Word>> maybeWords = transcriptWords.parallelStream()
-                .map(wordLoader::loadWord)
+                .map(w -> wordLoader.loadWord(characterId, w))
                 .collect(Collectors.toList());
 
         List<String> unknownWords = maybeWords.stream()
@@ -111,11 +116,14 @@ public class SpeakWorkflowInstance implements Runnable {
     }
 
     private String finalSignoffText() {
-        var transcriptCopy = transcriptWords.stream().collect(Collectors.joining(" ", "\"", "\""));
-        return "Obama has spoken: " + transcriptCopy;
+        return transcriptWords.stream().collect(Collectors.joining(" ", "\"", "\""));
     }
 
     private void leaveVoice(AudioConnection audioConnection) {
         audioConnection.close().join();
+    }
+
+    private String characterFmt(String fmt) {
+        return String.format(fmt, characterDisplayName);
     }
 }
