@@ -56,3 +56,17 @@ task runExtract (type: JavaExec) {
     standardInput = System.in
     workingDir = 'local'
 }
+
+task runIdentify (type: JavaExec) {
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'io.mamish.therealobama.batch2.MainIdentify'
+    standardInput = System.in
+    workingDir = 'local'
+}
+
+task runCorrect (type: JavaExec) {
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'io.mamish.therealobama.batch2.MainCorrect'
+    standardInput = System.in
+    workingDir = 'local'
+}
