@@ -70,3 +70,10 @@ task runCorrect (type: JavaExec) {
     standardInput = System.in
     workingDir = 'local'
 }
+
+task runUpload (type: JavaExec) {
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'io.mamish.therealobama.batch2.MainUpload'
+    standardInput = System.in
+    workingDir = 'local'
+}
